@@ -94,7 +94,7 @@ impl CoveragePlugin {
             .unwrap_or_else(graphify_registry::registry_db_path)
     }
 
-    fn db(&self) -> Result<CoverageDb, rusqlite::Error> {
+    pub fn db(&self) -> Result<CoverageDb, rusqlite::Error> {
         CoverageDb::open(&self.registry_path())
     }
 
