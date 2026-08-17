@@ -187,7 +187,8 @@ fn resolve_file_level(
 }
 
 /// `node_path` 是否代表 `want`（workspace-root 相對路徑）。
-/// 精確相等，或兩者都以 `/` 分隔且 node_path 以 `want` 結尾。
+/// 精確相等，或兩者都以 `/` 分隔且 node_path 以 `want` 結尾，
+/// 或 want 以 node_path 結尾（反向匹配，處理 lcov 給絕對路徑而 graph 給相對路徑的情況）。
 #[must_use]
 pub fn file_matches(node_path: &str, want: &str) -> bool {
     if node_path == want {
@@ -196,12 +197,25 @@ pub fn file_matches(node_path: &str, want: &str) -> bool {
     if want.is_empty() {
         return false;
     }
+
+    // 正向：node_path 以 want 結尾（graph 路徑長，coverage 路徑短）
     if want.contains('/') {
         let n = node_path.strip_suffix(want);
         if let Some(prefix) = n {
             return prefix.is_empty() || prefix.ends_with('/');
         }
     }
+
+    // 反向：want 以 node_path 結尾（coverage 路徑長，graph 路徑短）
+    // 去掉 graph 路徑的 `./` 前綴再比對
+    let clean_path = node_path.strip_prefix("./").unwrap_or(node_path);
+    if clean_path.contains('/') {
+        let n = want.strip_suffix(clean_path);
+        if let Some(prefix) = n {
+            return prefix.is_empty() || prefix.ends_with('/');
+        }
+    }
+
     false
 }
 
@@ -346,5 +360,18 @@ mod tests {
         assert!(!file_matches("src/auth.rs", "auth.rs")); // 純檔名不做 suffix
         assert!(!file_matches("src/foosrc/auth.rs", "src/auth.rs"));
         assert!(file_matches("src/foosrc/auth.rs", "src/foosrc/auth.rs"));
+
+        // 反向匹配：coverage 給絕對路徑，graph 給相對路徑（含 ./ 前綴）
+        assert!(file_matches(
+            "./graphify-core/src/types.rs",
+            "/home/user/project/graphify-core/src/types.rs"
+        ));
+        // 反向匹配：graph 相對路徑不帶 ./ 前綴
+        assert!(file_matches(
+            "graphify-core/src/types.rs",
+            "/home/user/project/graphify-core/src/types.rs"
+        ));
+        // 反向匹配不應配對檔名級別
+        assert!(!file_matches("src/auth.rs", "/repo/other/auth.rs"));
     }
 }
