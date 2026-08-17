@@ -174,7 +174,7 @@ fn resolve_file_level(
         };
         bindings.push(CoverageBinding {
             workspace_key: workspace_key.to_string(),
-            canonical_node_id: String::new(),
+            canonical_node_id: format!("file:{coverage_file}"),
             file_path: coverage_file.to_string(),
             total_lines: total as i64,
             covered_lines: covered as i64,
@@ -331,9 +331,10 @@ mod tests {
         ]);
         // Node 涵蓋 line 10,15；殘餘行為 1,5,30
         let bindings = resolve_coverage(&g, &c, "w-1");
-        let file_bindings: Vec<_> = bindings.iter().filter(|b| b.canonical_node_id.is_empty()).collect();
+        let file_bindings: Vec<_> = bindings.iter().filter(|b| b.canonical_node_id.starts_with("file:")).collect();
         assert_eq!(file_bindings.len(), 1, "file-level entry");
         let fb = &file_bindings[0];
+        assert_eq!(fb.canonical_node_id, "file:src/a.rs");
         assert_eq!(fb.total_lines, 3); // lines 1,5,30
         assert_eq!(fb.covered_lines, 2); // lines 1,30 are covered
         assert!((fb.line_rate - 2.0 / 3.0).abs() < 0.001);

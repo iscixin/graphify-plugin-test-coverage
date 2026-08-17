@@ -185,7 +185,7 @@ impl CoverageDb {
         self.conn
             .query_row(
                 "SELECT COALESCE(AVG(line_rate), 0.0) FROM coverage_bindings
-                 WHERE workspace_key = ?1 AND canonical_node_id != ''",
+                 WHERE workspace_key = ?1 AND canonical_node_id NOT LIKE 'file:%'",
                 params![workspace_key],
                 |r| r.get(0),
             )
